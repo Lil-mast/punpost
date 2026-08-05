@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/admin/Desktop/punpost/frontend/src/app/globals.css"],"sourcesContent":["@tailwind base;\r\n@tailwind components;\r\n@tailwind utilities;\r\n\r\n:root {\r\n  --font-display: \"Inter\", system-ui, sans-serif;\r\n  --font-body: \"Inter\", system-ui, sans-serif;\r\n}\r\n\r\nbody {\r\n  font-family: var(--font-body);\r\n}"],"names":[],"mappings":"AAAA;;AACA;;AACA;;AAEA;;;;;AAKA"}}]
+}

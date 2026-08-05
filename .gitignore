@@ -5,3 +5,5 @@ pycache/
 *.pyc
 .venv
 node_modules/
+.claude\skills
+.agents\skills
