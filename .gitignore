@@ -1,0 +1,7 @@
+.env
+venv
+pycache/
+*pycache/
+*.pyc
+.venv
+node_modules/
