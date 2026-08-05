@@ -7,3 +7,4 @@ pycache/
 node_modules/
 .claude\skills
 .agents\skills
+__pycache__/

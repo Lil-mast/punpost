@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "rest_framework.authtoken",
     "corsheaders",
     "allauth",
     "allauth.account",
@@ -180,20 +181,40 @@ SIMPLE_JWT = {
 # -----------------------------------------------------------------------------
 # Redis
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Redis (optional in development)
+# -----------------------------------------------------------------------------
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    }
-}
+try:
+    import redis
+    r = redis.from_url(REDIS_URL)
+    r.ping()
+    REDIS_AVAILABLE = True
+except Exception:
+    REDIS_AVAILABLE = False
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
+if REDIS_AVAILABLE:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
+else:
+    # Fallback for development when Redis is not running
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "punpost-cache",
+        }
+    }
+    SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 # -----------------------------------------------------------------------------
 # Convex
@@ -235,6 +256,17 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+# -----------------------------------------------------------------------------
+# dj-rest-auth
+# -----------------------------------------------------------------------------
+REST_AUTH = {
+    "REGISTER_SERIALIZER": "users.serializers.CustomRegisterSerializer",
+    "USER_DETAILS_SERIALIZER": "users.serializers.UserSerializer",
+    "USE_JWT": True,
+    "JWT_AUTH_HTTPONLY": False,          # so frontend can read the tokens
+    "SESSION_LOGIN": False,              # we prefer JWT for API
+}
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
