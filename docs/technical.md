@@ -220,32 +220,29 @@ else:
 
 ### JWT Flow
 
-```
-┌──────────┐     POST /api/auth/login/     ┌──────────┐
-│ Client   │ ─────────────────────────────► │ Django   │
-│          │ ◄───────────────────────────── │          │
-│          │  { access, refresh, user }    │          │
-└──────────┘                                 └──────────┘
-      │                                           │
-      │ Authorization: Bearer <access>            │
-      ▼                                           ▼
-┌──────────┐                                 ┌──────────┐
-│ API Call │ ─────────────────────────────► │ Validate │
-│          │ ◄───────────────────────────── │ JWT +    │
-└──────────┘  Protected Resource           │ Get User │
-                                           └──────────┘
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant A as Django
+    participant P as Protected API
+
+    C->>A: POST /api/auth/login/ {email, password}
+    A-->>C: 200 OK { access, refresh, user }
+
+    C->>P: API Call<br/>Authorization: Bearer <access>
+    P->>P: Validate JWT signature + expiry
+    P->>P: Resolve user from token
+    P-->>C: Protected Resource (200)
 ```
 
 ### Token Refresh
 
-```
-POST /api/auth/token/refresh/  (with refresh token in body or cookie)
-    │
-    ▼
-New access token + NEW refresh token (rotation)
-    │
-    ▼
-Old refresh token → Blacklisted (token_blacklist app)
+```mermaid
+flowchart TB
+    R["POST /api/auth/token/refresh/<br/>{refresh}"] --> Rot["Rotate: issue NEW access + refresh"]
+    Rot --> Bl["Old refresh token → Blacklisted<br/>(token_blacklist app)"]
+    Bl --> Resp["200 OK { new access, new refresh }"]
 ```
 
 ### Social OAuth Flow (Google/GitHub)
@@ -418,26 +415,24 @@ Prevent duplicate charges when clients retry payment requests due to network tim
 
 ### Implementation Pattern
 
-```
-Client                           Server
-  │                                │
-  ├─ POST /api/billing/charge/    │
-  │  Idempotency-Key: abc-123     │
-  │  { amount: 1000 }             │
-  │                                ├─ Check Redis: GET idempotency:abc-123
-  │                                │  ├─ Exists → Return cached response
-  │                                │  └─ Not exists → Process payment
-  │                                │     ├─ Charge payment provider
-  │                                │     ├─ Store result in Redis (TTL 24h)
-  │                                │     └─ Return response
-  │◄──────────────────────────────┤
-  │  { success: true, charge_id } │
-  │                                │
-  ├─ POST /api/billing/charge/    │  (Retry with same key)
-  │  Idempotency-Key: abc-123     │
-  │                                ├─ Check Redis → Found!
-  │                                └─ Return cached response immediately
-  │◄──────────────────────────────┤
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant S as Server
+    participant R as Redis
+
+    C->>S: POST /api/billing/charge/<br/>Idempotency-Key: abc-123<br/>{ amount: 1000 }
+    S->>R: GET idempotency:abc-123
+    alt Cache miss (first attempt)
+        R-->>S: null
+        S->>S: Process payment
+        S->>R: SET idempotency:abc-123 (TTL 24h)
+        S-->>C: 200 OK { success, charge_id }
+    else Cache hit (retry)
+        R-->>S: cached { data, status }
+        S-->>C: 200 OK cached response<br/>(same charge_id)
+    end
 ```
 
 ### Implementation (`billing/services.py`)

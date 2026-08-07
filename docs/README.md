@@ -6,9 +6,25 @@ Welcome to the PunPost documentation. This project is a **production-ready monol
 
 | Document | Description | Audience |
 |----------|-------------|----------|
-| [Architecture](architecture.md) | High-level system design, layer responsibilities, data flows, tech stack | Architects, Senior Engineers |
+| [Architecture](architecture.md) | High-level system design, layer responsibilities, **Mermaid data flows**, tech stack | Architects, Senior Engineers |
 | [Technical Reference](technical.md) | Settings deep-dive, API endpoints, auth flows, rate limiting, idempotency, testing | Backend Engineers |
 | [Educational Guide](educational.md) | Concept explanations with code examples: REST, AuthN/AuthZ, JWT, OAuth, Rate Limiting, Idempotency, Monolith vs Microservices, Convex, Redis, Testing | Learners, Junior-Mid Engineers |
+
+> All structural and data-flow diagrams in this documentation use **Mermaid** and render natively on GitHub/GitLab.
+
+---
+
+## System Overview
+
+```mermaid
+flowchart LR
+    FE["Next.js Frontend"] -->|"REST + JWT"| API["Django REST API"]
+    FE -->|"WebSocket"| CX["Convex"]
+    API -->|"queries / mutations"| CX
+    API --> DB[(SQLite/PostgreSQL)]
+    API --> RD["Redis"]
+    API --> AD["Django Admin"]
+```
 
 ---
 
@@ -57,24 +73,24 @@ npx convex dev
 
 ## Project Structure
 
-```
-punpost/
-├── backend/                 # Django REST API
-│   ├── config/              # Settings, URLs, WSGI/ASGI
-│   ├── core/                # Health checks, Convex client, throttles
-│   ├── users/               # Auth, RBAC, profiles, Convex sync
-│   ├── posts/               # Posts, comments, reactions (Convex)
-│   ├── billing/             # Payments, subscriptions, idempotency
-│   └── requirements.txt
-├── frontend/                # Next.js 15 + React 19 + TypeScript
-│   ├── src/app/             # App Router pages
-│   ├── src/components/      # Reusable UI
-│   ├── src/lib/             # API client, utilities
-│   └── src/hooks/           # Custom React hooks
-├── convex/                  # Convex backend (schema, functions)
-├── docs/                    # This documentation
-├── .env.example             # Environment template
-└── README.md
+```mermaid
+flowchart TB
+    root["punpost/"] --> backend["backend/ — Django REST API"]
+    backend --> bcfg["config/<br/>settings, URLs, WSGI/ASGI"]
+    backend --> bcore["core/<br/>health checks, Convex client, throttles"]
+    backend --> busers["users/<br/>auth, RBAC, profiles, Convex sync"]
+    backend --> bposts["posts/<br/>posts, comments, reactions"]
+    backend --> bbilling["billing/<br/>payments, subscriptions, idempotency"]
+
+    root --> frontend["frontend/ — Next.js 15 + React 19 + TS"]
+    frontend --> fapp["src/app/ — App Router pages"]
+    frontend --> fcomp["src/components/ — Reusable UI"]
+    frontend --> flib["src/lib/ — API client, utilities"]
+    frontend --> fhooks["src/hooks/ — Custom React hooks"]
+
+    root --> convex["convex/ — Convex backend (schema, functions)"]
+    root --> docs["docs/ — this documentation"]
+    root --> env[".env.example"]
 ```
 
 ---
