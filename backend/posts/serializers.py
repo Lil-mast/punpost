@@ -32,3 +32,21 @@ class PostSerializer(serializers.Serializer):
     created_at = serializers.IntegerField(source="createdAt")
     updated_at = serializers.IntegerField(source="updatedAt")
     view_count = serializers.IntegerField(source="viewCount")
+
+class CommentCreateSerializer(serializers.Serializer):
+    content = serializers.CharField(min_length=1, max_length=2000)
+    parent_id = serializers.CharField(required=False, allow_null=True)
+
+
+class CommentUpdateSerializer(serializers.Serializer):
+    content = serializers.CharField(min_length=1, max_length=2000)
+
+
+class CommentSerializer(serializers.Serializer):
+    id = serializers.CharField(source="_id")
+    post_id = serializers.CharField(source="postId")
+    author_id = serializers.CharField(source="authorId")
+    content = serializers.CharField()
+    parent_id = serializers.CharField(source="parentId", required=False, allow_null=True)
+    created_at = serializers.IntegerField(source="createdAt")
+    updated_at = serializers.IntegerField(source="updatedAt")

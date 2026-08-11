@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from core.permissions import IsAuthorOrReadOnly, IsAuthor
-from .serializers import PostCreateSerializer, PostSerializer
+from .serializers import PostCreateSerializer, PostSerializer, CommentCreateSerializer, CommentUpdateSerializer, CommentSerializer
 from . import services
 
 
@@ -50,3 +50,55 @@ class PostDetailView(APIView):
     def get(self, request, slug):
         post = services.get_post_by_slug(slug)
         return Response(PostSerializer(post).data)
+
+class CommentListCreateView(APIView):
+    """
+    GET  /api/posts/<slug>/comments/     → list comments (public)
+    POST /api/posts/<slug>/comments/     → create comment (authenticated)
+    """
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    def get(self, request, slug):
+        comments = services.list_comments(slug)
+        return Response(CommentSerializer(comments, many=True).data)
+
+    def post(self, request, slug):
+        serializer = CommentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        comment = services.create_comment(
+            post_slug=slug,
+            author=request.user,
+            content=serializer.validated_data["content"],
+            parent_id=serializer.validated_data.get("parent_id"),
+        )
+        return Response(
+            CommentSerializer(comment).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+class CommentDetailView(APIView):
+    """
+    PATCH  /api/posts/<slug>/comments/<comment_id>/   → edit (owner/admin)
+    DELETE /api/posts/<slug>/comments/<comment_id>/   → soft delete (owner/admin)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, slug, comment_id):
+        serializer = CommentUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        comment = services.update_comment(
+            comment_id=comment_id,
+            user=request.user,
+            content=serializer.validated_data.get("content", ""),
+        )
+        return Response(CommentSerializer(comment).data)
+
+    def delete(self, request, slug, comment_id):
+        services.delete_comment(comment_id=comment_id, user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)

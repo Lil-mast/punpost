@@ -68,3 +68,60 @@ def create_post(
     })
 
     return get_post_by_slug(slug)
+
+# Comments
+
+def list_comments(post_slug: str):
+    post = get_post_by_slug(post_slug)
+    comments = query("comments:listByPost", {"postId": post["_id"]})
+    return comments
+
+
+def create_comment(
+    *,
+    post_slug: str,
+    author: User,
+    content: str,
+    parent_id: str = None,
+):
+    if not author.convex_id:
+        raise ValidationError("User is not synced with Convex")
+
+    post = get_post_by_slug(post_slug)
+
+    comment_id = mutation("comments:create", {
+        "postId": post["_id"],
+        "authorId": author.convex_id,
+        "content": content,
+        "parentId": parent_id,
+    })
+
+    return query("comments:getById", {"id": comment_id})
+
+
+def update_comment(*, comment_id: str, user: User, content: str):
+    comment = query("comments:getById", {"id": comment_id})
+    if not comment or comment.get("isDeleted"):
+        raise NotFound("Comment not found")
+
+    if user.role != "admin" and comment["authorId"] != user.convex_id:
+        raise PermissionDenied("You can only edit your own comments")
+
+    mutation("comments:update", {
+        "id": comment_id,
+        "content": content,
+    })
+
+    return query("comments:getById", {"id": comment_id})
+
+
+def delete_comment(*, comment_id: str, user: User):
+    comment = query("comments:getById", {"id": comment_id})
+    if not comment or comment.get("isDeleted"):
+        raise NotFound("Comment not found")
+
+    if user.role != "admin" and comment["authorId"] != user.convex_id:
+        raise PermissionDenied("You can only delete your own comments")
+
+    mutation("comments:softDelete", {"id": comment_id})
+    return True
