@@ -186,3 +186,107 @@ class CommentEndpointsTest(TestCase):
             f"/api/posts/{self.post_slug}/comments/{self.mock_comment['_id']}/",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("posts.services.create_post")
+    def test_post_creation_throttle(self, mock_create_post):
+        # Simulate creating a post document returned from services.create_post
+        def make_post(**kwargs):
+            title = kwargs.get("title") or "Title"
+            return {
+                "_id": f"post_{title}",
+                "title": title,
+                "slug": title.lower().replace(" ", "-"),
+                "content": kwargs.get("content", ""),
+                "excerpt": None,
+                "coverImage": None,
+                "authorId": self.author.convex_id,
+                "status": kwargs.get("status", "draft"),
+                "tags": [],
+                "publishedAt": None,
+                "createdAt": 123,
+                "updatedAt": 123,
+                "viewCount": 0,
+            }
+
+        mock_create_post.side_effect = make_post
+
+        self.client.force_authenticate(user=self.author)
+
+        # Send 11 POST requests; the 11th should be throttled (429)
+        for i in range(1, 12):
+            resp = self.client.post(
+                "/api/posts/",
+                {"title": f"Post {i}", "content": "x"},
+                format="json",
+            )
+            if i <= 10:
+                self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+            else:
+                # Should be throttled with a JSON detail message
+                self.assertEqual(resp.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+                self.assertIn("Request was throttled", resp.data.get("detail", ""))
+                self.assertIn("Expected available in", resp.data.get("detail", ""))
+
+    @patch("posts.services.create_post")
+    def test_post_creation_throttle_multiple_users_and_ips(self, mock_create_post):
+        # Simulate creating a post document returned from services.create_post
+        def make_post(**kwargs):
+            title = kwargs.get("title") or "Title"
+            return {
+                "_id": f"post_{title}",
+                "title": title,
+                "slug": title.lower().replace(" ", "-"),
+                "content": kwargs.get("content", ""),
+                "excerpt": None,
+                "coverImage": None,
+                "authorId": self.author.convex_id,
+                "status": kwargs.get("status", "draft"),
+                "tags": [],
+                "publishedAt": None,
+                "createdAt": 123,
+                "updatedAt": 123,
+                "viewCount": 0,
+            }
+
+        mock_create_post.side_effect = make_post
+
+        # Use two different authenticated creators (author and admin)
+        # Verify each has an independent 10-per-hour limit (11th -> 429)
+        # Author: create 10 posts from IP1, then attempt 11th from IP2
+        self.client.force_authenticate(user=self.author)
+        for i in range(1, 11):
+            resp = self.client.post(
+                "/api/posts/",
+                {"title": f"A1 Post {i}", "content": "x"},
+                format="json",
+                HTTP_X_FORWARDED_FOR="1.1.1.1",
+            )
+            self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+        # 11th request from a different IP should still be throttled (keyed by user)
+        resp = self.client.post(
+            "/api/posts/",
+            {"title": "A1 Post 11", "content": "x"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="2.2.2.2",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # Admin: independent counter
+        self.client.force_authenticate(user=self.admin)
+        for i in range(1, 11):
+            resp = self.client.post(
+                "/api/posts/",
+                {"title": f"Admin Post {i}", "content": "x"},
+                format="json",
+                HTTP_X_FORWARDED_FOR="1.1.1.1",
+            )
+            self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+        resp = self.client.post(
+            "/api/posts/",
+            {"title": "Admin Post 11", "content": "x"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="1.1.1.1",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

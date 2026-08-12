@@ -6,6 +6,7 @@ from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.github.views import GitHubOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from users.views_auth import ThrottledLoginView
 
 
 class GoogleLogin(SocialLoginView):
@@ -39,6 +40,10 @@ urlpatterns = [
     path("api/users/", include("users.urls")),
     path("api/posts/", include("posts.urls")),
     path("api/billing/", include("billing.urls")),
+
+    # Throttled login view
+    path("api/auth/login/", ThrottledLoginView.as_view(), name="rest_login"),
+    path("api/auth/logout/", include("dj_rest_auth.urls")),
 ]
 
 if settings.DEBUG:

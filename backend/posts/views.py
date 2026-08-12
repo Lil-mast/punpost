@@ -7,6 +7,7 @@ from rest_framework import status, permissions
 from core.permissions import IsAuthorOrReadOnly, IsAuthor
 from .serializers import PostCreateSerializer, PostSerializer, CommentCreateSerializer, CommentUpdateSerializer, CommentSerializer
 from . import services
+from core.throttling import PostCreateRateThrottle
 
 
 class PostListCreateView(APIView):
@@ -15,6 +16,7 @@ class PostListCreateView(APIView):
     POST /api/posts/          → create post (authors + admins only)
     """
     permission_classes = [IsAuthorOrReadOnly]
+
 
     def get(self, request):
         posts = services.list_published_posts()
@@ -39,6 +41,10 @@ class PostListCreateView(APIView):
             PostSerializer(post).data,
             status=status.HTTP_201_CREATED
         )
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [PostCreateRateThrottle()]
+        return []
 
 
 class PostDetailView(APIView):
