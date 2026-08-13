@@ -43,7 +43,6 @@ urlpatterns = [
 
     # Throttled login view
     path("api/auth/login/", ThrottledLoginView.as_view(), name="rest_login"),
-    path("api/auth/logout/", include("dj_rest_auth.urls")),
 ]
 
 if settings.DEBUG:

@@ -5,6 +5,7 @@ pycache/
 *.pyc
 .venv
 node_modules/
+frontend/.next/
 .claude\skills
 .agents\skills
 __pycache__/

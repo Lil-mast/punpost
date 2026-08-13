@@ -1,6 +1,14 @@
 from rest_framework.throttling import SimpleRateThrottle
 
 
+def get_client_ip(request):
+    """Get client IP respecting X-Forwarded-For when behind a trusted proxy."""
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")
+
+
 class LoginRateThrottle(SimpleRateThrottle):
     """
     Strict limit on login attempts.
@@ -9,11 +17,9 @@ class LoginRateThrottle(SimpleRateThrottle):
     scope = "login"
 
     def get_cache_key(self, request, view):
-        # Throttle by IP for login
-        return self.cache_format % {
-            "scope": self.scope,
-            "ident": self.get_ident(request)
-        }
+        # Throttle by IP for login (respects X-Forwarded-For via get_client_ip)
+        ident = get_client_ip(request)
+        return self.cache_format % {"scope": self.scope, "ident": ident}
 
 
 class PostCreateRateThrottle(SimpleRateThrottle):
@@ -25,11 +31,8 @@ class PostCreateRateThrottle(SimpleRateThrottle):
 
     def get_cache_key(self, request, view):
         if request.user and request.user.is_authenticated:
-            ident = request.user.pk
+            ident = str(request.user.pk)
         else:
-            ident = self.get_ident(request)
+            ident = get_client_ip(request)
 
-        return self.cache_format % {
-            "scope": self.scope,
-            "ident": ident
-        }
+        return self.cache_format % {"scope": self.scope, "ident": ident}

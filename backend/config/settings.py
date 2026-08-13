@@ -23,6 +23,10 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production-
 DEBUG = env.bool("DEBUG", default=True)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+# Proxy / SSL
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 # -----------------------------------------------------------------------------
 # Apps
 # -----------------------------------------------------------------------------

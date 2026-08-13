@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -9,6 +10,7 @@ User = get_user_model()
 
 class CommentEndpointsTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         
         self.author = User.objects.create_user(
@@ -189,13 +191,13 @@ class CommentEndpointsTest(TestCase):
 
     @patch("posts.services.create_post")
     def test_post_creation_throttle(self, mock_create_post):
-        # Simulate creating a post document returned from services.create_post
         def make_post(**kwargs):
             title = kwargs.get("title") or "Title"
+            slug = title.lower().replace(" ", "-")
             return {
-                "_id": f"post_{title}",
+                "_id": f"post_{slug}",
                 "title": title,
-                "slug": title.lower().replace(" ", "-"),
+                "slug": slug,
                 "content": kwargs.get("content", ""),
                 "excerpt": None,
                 "coverImage": None,
@@ -209,33 +211,26 @@ class CommentEndpointsTest(TestCase):
             }
 
         mock_create_post.side_effect = make_post
-
         self.client.force_authenticate(user=self.author)
 
-        # Send 11 POST requests; the 11th should be throttled (429)
         for i in range(1, 12):
-            resp = self.client.post(
-                "/api/posts/",
-                {"title": f"Post {i}", "content": "x"},
-                format="json",
-            )
+            resp = self.client.post("/api/posts/", {"title": f"Post {i}", "content": "x"}, format="json")
             if i <= 10:
                 self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
             else:
-                # Should be throttled with a JSON detail message
                 self.assertEqual(resp.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
                 self.assertIn("Request was throttled", resp.data.get("detail", ""))
                 self.assertIn("Expected available in", resp.data.get("detail", ""))
 
     @patch("posts.services.create_post")
     def test_post_creation_throttle_multiple_users_and_ips(self, mock_create_post):
-        # Simulate creating a post document returned from services.create_post
         def make_post(**kwargs):
             title = kwargs.get("title") or "Title"
+            slug = title.lower().replace(" ", "-")
             return {
-                "_id": f"post_{title}",
+                "_id": f"post_{slug}",
                 "title": title,
-                "slug": title.lower().replace(" ", "-"),
+                "slug": slug,
                 "content": kwargs.get("content", ""),
                 "excerpt": None,
                 "coverImage": None,

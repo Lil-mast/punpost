@@ -1,14 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6">
+    <main className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-6">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
         className="text-center"
       >
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
@@ -16,27 +17,28 @@ export default function HomePage() {
             PunPost
           </span>
         </h1>
-        <p className="mt-4 text-lg text-zinc-400 max-w-md mx-auto">
+        <p className="mt-6 text-lg text-zinc-400 max-w-lg mx-auto">
           A bazaar of witty words. Write, share, and discover posts that actually make you smile.
         </p>
+
         <motion.div
-          className="mt-10 flex gap-4 justify-center"
+          className="mt-12 flex flex-wrap gap-4 justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.35 }}
         >
-          <a
-            href="/login"
-            className="rounded-full bg-fuchsia-600 px-6 py-3 text-sm font-medium text-white hover:bg-fuchsia-500 transition"
-          >
-            Get started
-          </a>
-          <a
+          <Link
             href="/explore"
-            className="rounded-full border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-300 hover:border-zinc-500 transition"
+            className="rounded-full bg-fuchsia-600 px-8 py-3 text-sm font-medium text-white hover:bg-fuchsia-500 transition"
           >
             Explore posts
-          </a>
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-full border border-zinc-700 px-8 py-3 text-sm font-medium text-zinc-300 hover:border-zinc-500 transition"
+          >
+            Start writing
+          </Link>
         </motion.div>
       </motion.div>
     </main>

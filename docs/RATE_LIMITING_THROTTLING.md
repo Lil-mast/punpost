@@ -70,37 +70,47 @@ class PostListCreateView(APIView):
 
 ### Cache Key Generation
 
-**LoginRateThrottle** - IP-based:
+**LoginRateThrottle** - IP-based (respects `X-Forwarded-For` via `get_client_ip`):
 ```python
 def get_cache_key(self, request, view):
-    return self.cache_format % {
-        "scope": self.scope,
-        "ident": self.get_ident(request)  # IP address
-    }
+    ident = get_client_ip(request)  # Respects X-Forwarded-For
+    return self.cache_format % {"scope": self.scope, "ident": ident}
 ```
 
-**PostCreateRateThrottle** - User-based:
+**PostCreateRateThrottle** - User-based (falls back to IP for anonymous):
 ```python
 def get_cache_key(self, request, view):
     if request.user and request.user.is_authenticated:
-        ident = request.user.pk  # User ID
+        ident = str(request.user.pk)
     else:
-        ident = self.get_ident(request)  # Fallback to IP
-    return self.cache_format % {
-        "scope": self.scope,
-        "ident": ident
-    }
+        ident = get_client_ip(request)
+    return self.cache_format % {"scope": self.scope, "ident": ident}
 ```
 
 ### Redis Backend
 
-The system uses Redis for distributed rate limiting (configured in `requirements.txt`):
-```
-# Redis (sessions + rate limiting + idempotency)
-django-ratelimit>=4.1.0
+The system uses Redis for distributed rate limiting via Django's cache framework with `django-redis` (configured in `settings.py`):
+
+```python
+# settings.py
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
+
+if REDIS_AVAILABLE:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        }
+    }
 ```
 
 Cache keys follow format: `throttle_{scope}_{ident}`
+
+**Requirements** (`requirements.txt`):
+```
+django-redis>=5.4.0  # Redis cache backend
+```
 
 ### Response on Throttle (HTTP 429)
 
@@ -228,13 +238,13 @@ pm.test("Throttled at limit", function () {
 Add to `.env` for production tuning:
 
 ```env
-# Throttle rates (override defaults)
+# Throttle rates (override defaults in settings.py)
 THROTTLE_ANON_RATE=100/hour
 THROTTLE_USER_RATE=1000/hour
 THROTTLE_LOGIN_RATE=5/minute
 THROTTLE_POST_CREATE_RATE=10/hour
 
-# Redis for distributed rate limiting
+# Redis for distributed rate limiting (used by CACHES in settings.py)
 REDIS_URL=redis://localhost:6379/1
 ```
 
@@ -250,6 +260,45 @@ Edit `backend/config/settings.py`:
     "post_create": "20/hour",  # Allow more posts
 }
 ```
+
+### Redis Cache Configuration
+
+The `CACHES` setting in `settings.py` is **conditional** - it uses Redis when available, falls back to local memory cache in development:
+
+```python
+# settings.py (already configured)
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
+
+try:
+    import redis
+    r = redis.from_url(REDIS_URL)
+    r.ping()
+    REDIS_AVAILABLE = True
+except Exception:
+    REDIS_AVAILABLE = False
+
+if REDIS_AVAILABLE:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        }
+    }
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
+else:
+    # Fallback for development when Redis is not running
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "punpost-cache",
+        }
+    }
+    SESSION_ENGINE = "django.contrib.sessions.backends.db"
+```
+
+**Important**: In production, ensure `REDIS_URL` is set and Redis is running. The throttling will not work correctly across multiple workers/processes without a shared cache backend.
 
 ## Monitoring & Debugging
 
@@ -293,3 +342,5 @@ LOGGING = {
 | Limits not enforced | Throttle classes not applied | Verify `get_throttles()` returns correct classes |
 | Different users share limit | Cache key uses IP not user | Ensure `PostCreateRateThrottle` uses `request.user.pk` |
 | Login not throttled | Wrong view class used | Ensure `ThrottledLoginView` is in URLs, not base `LoginView` |
+| Wrong IP detected behind proxy | `X-Forwarded-For` not trusted | Set `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST=True` in settings.py |
+| Throttling not working in production | Local memory cache used | Ensure `REDIS_URL` is set and Redis is running; verify `REDIS_AVAILABLE=True` |
