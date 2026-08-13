@@ -14,16 +14,15 @@ def slugify(text: str) -> str:
     return text[:80]
 
 
-def list_published_posts(limit: int = 20, cursor: Optional[str] = None):
-    args = {}
-    if cursor is not None:
-        args["paginationOpts"] = {"numItems": limit, "cursor": cursor}
-    else:
-        # simple take for now
-        result = query("posts:listPublished", {})
-        return result
-
-    return query("posts:listPublished", args)
+def list_published_posts(limit: int = 10, cursor: str | None = None):
+    args = {
+        "paginationOpts": {
+            "numItems": limit,
+            "cursor": cursor,
+        }
+    }
+    result = query("posts:listPublished", args)
+    return result
 
 
 def get_post_by_slug(slug: str):
