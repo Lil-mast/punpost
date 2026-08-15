@@ -1,8 +1,8 @@
 from core.convex_client import query, mutation
 from django.contrib.auth import get_user_model
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 import re
-from typing import Optional
+import time
 
 User = get_user_model()
 
@@ -14,7 +14,20 @@ def slugify(text: str) -> str:
     return text[:80]
 
 
-def list_published_posts(limit: int = 10, cursor: str | None = None):
+def _unwrap_posts(result):
+    """Convex may return a bare list or a paginated {page, continueCursor, isDone}."""
+    if result is None:
+        return []
+    if isinstance(result, list):
+        return result
+    if isinstance(result, dict):
+        page = result.get("page")
+        if isinstance(page, list):
+            return page
+    return []
+
+
+def list_published_posts(limit: int = 20, cursor: str | None = None):
     args = {
         "paginationOpts": {
             "numItems": limit,
@@ -22,7 +35,7 @@ def list_published_posts(limit: int = 10, cursor: str | None = None):
         }
     }
     result = query("posts:listPublished", args)
-    return result
+    return _unwrap_posts(result)
 
 
 def get_post_by_slug(slug: str):
@@ -42,38 +55,57 @@ def create_post(
     status: str = "draft",
     tags: list[str] = None,
 ):
-    if not author.convex_id:
-        raise ValidationError("User is not synced with Convex")
+    from users.services import sync_user_to_convex
 
-    if author.role not in ("author", "admin"):
-        raise PermissionDenied("Only authors and admins can create posts")
+    if not author.convex_id:
+        sync_user_to_convex(author)
+        author.refresh_from_db()
+
+    if not author.convex_id:
+        raise ValidationError(
+            "Your account is not synced yet. Please try again in a moment, "
+            "or check that Convex is configured."
+        )
+
+    # First publish/draft promotes reader → author
+    if author.role == "reader":
+        author.role = "author"
+        author.save(update_fields=["role"])
 
     slug = slugify(title)
 
-    # Ensure unique slug (simple version)
     existing = query("posts:getBySlug", {"slug": slug})
     if existing:
-        slug = f"{slug}-{int(__import__('time').time())}"
+        slug = f"{slug}-{int(time.time())}"
 
-    post_id = mutation("posts:create", {
+    # Convex optional fields must be omitted — null fails v.optional(v.string())
+    payload = {
         "title": title,
         "slug": slug,
         "content": content,
-        "excerpt": excerpt,
-        "coverImage": cover_image,
         "authorId": author.convex_id,
         "status": status,
         "tags": tags or [],
-    })
+    }
+    if excerpt:
+        payload["excerpt"] = excerpt
+    if cover_image:
+        payload["coverImage"] = cover_image
+
+    try:
+        mutation("posts:create", payload)
+    except Exception as exc:
+        raise ValidationError(f"Failed to create post: {exc}") from exc
 
     return get_post_by_slug(slug)
+
 
 # Comments
 
 def list_comments(post_slug: str):
     post = get_post_by_slug(post_slug)
     comments = query("comments:listByPost", {"postId": post["_id"]})
-    return comments
+    return comments or []
 
 
 def create_comment(
@@ -83,44 +115,39 @@ def create_comment(
     content: str,
     parent_id: str = None,
 ):
+    from users.services import sync_user_to_convex
+
+    if not author.convex_id:
+        sync_user_to_convex(author)
+        author.refresh_from_db()
+
     if not author.convex_id:
         raise ValidationError("User is not synced with Convex")
 
     post = get_post_by_slug(post_slug)
-
-    comment_id = mutation("comments:create", {
+    payload = {
         "postId": post["_id"],
         "authorId": author.convex_id,
         "content": content,
-        "parentId": parent_id,
-    })
+    }
+    if parent_id:
+        payload["parentId"] = parent_id
 
-    return query("comments:getById", {"id": comment_id})
+    comment_id = mutation("comments:create", payload)
+    comments = list_comments(post_slug)
+    for c in comments:
+        if c.get("_id") == comment_id:
+            return c
+    return {"_id": comment_id, **payload, "createdAt": int(time.time() * 1000), "updatedAt": int(time.time() * 1000)}
 
 
 def update_comment(*, comment_id: str, user: User, content: str):
+    mutation("comments:update", {"id": comment_id, "content": content})
     comment = query("comments:getById", {"id": comment_id})
-    if not comment or comment.get("isDeleted"):
+    if not comment:
         raise NotFound("Comment not found")
-
-    if user.role != "admin" and comment["authorId"] != user.convex_id:
-        raise PermissionDenied("You can only edit your own comments")
-
-    mutation("comments:update", {
-        "id": comment_id,
-        "content": content,
-    })
-
-    return query("comments:getById", {"id": comment_id})
+    return comment
 
 
 def delete_comment(*, comment_id: str, user: User):
-    comment = query("comments:getById", {"id": comment_id})
-    if not comment or comment.get("isDeleted"):
-        raise NotFound("Comment not found")
-
-    if user.role != "admin" and comment["authorId"] != user.convex_id:
-        raise PermissionDenied("You can only delete your own comments")
-
     mutation("comments:softDelete", {"id": comment_id})
-    return True

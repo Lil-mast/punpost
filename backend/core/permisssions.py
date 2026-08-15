@@ -24,16 +24,12 @@ class IsAuthor(BasePermission):
 class IsAuthorOrReadOnly(BasePermission):
     """
     Read: anyone (even anonymous)
-    Write: only authors and admins
+    Write: any authenticated user (readers can draft/publish too)
     """
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return True
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role in ("author", "admin")
-        )
+        return bool(request.user and request.user.is_authenticated)
 
 
 class IsOwnerOrAdmin(BasePermission):

@@ -8,6 +8,7 @@ Welcome to the PunPost documentation. This project is a **production-ready monol
 |----------|-------------|----------|
 | [Architecture](architecture.md) | High-level system design, layer responsibilities, **Mermaid data flows**, tech stack | Architects, Senior Engineers |
 | [Technical Reference](technical.md) | Settings deep-dive, API endpoints, auth flows, rate limiting, idempotency, testing | Backend Engineers |
+| [Frontend Guide](frontend.md) | Landing page, NotchNavbar, PageShell, OAuth callback UX, dashboard & app routes | Frontend Engineers |
 | [Educational Guide](educational.md) | Concept explanations with code examples: REST, AuthN/AuthZ, JWT, OAuth, Rate Limiting, Idempotency, Monolith vs Microservices, Convex, Redis, Testing | Learners, Junior-Mid Engineers |
 
 > All structural and data-flow diagrams in this documentation use **Mermaid** and render natively on GitHub/GitLab.

@@ -248,12 +248,20 @@ flowchart TB
 ### Social OAuth Flow (Google/GitHub)
 
 ```
-1. Frontend: GET /api/auth/social/google/  →  Redirects to Google
-2. User consents → Google redirects to /api/auth/social/google/callback/
-3. Allauth exchanges code for tokens, creates/links User
-4. dj-rest-auth returns JWT pair
-5. Frontend stores tokens, redirects to app
+1. Frontend: window.location → {BACKEND_URL}/accounts/google/login/  (or github)
+2. User consents → provider redirects to /accounts/google/login/callback/
+3. Allauth creates/links User (session), then LOGIN_REDIRECT_URL
+4. GET /api/auth/oauth/complete/  → issues JWT pair, redirects to
+   {FRONTEND_URL}/auth/callback?access=...&refresh=...
+5. Frontend stores tokens in localStorage, routes to /dashboard
 ```
+
+Authorized redirect URIs (Google / GitHub consoles) must match exactly, e.g.:
+
+- `http://127.0.0.1:8000/accounts/google/login/callback/`
+- `http://127.0.0.1:8000/accounts/github/login/callback/`
+
+See also [Frontend Guide — Auth Flow](frontend.md#auth-flow-frontend).
 
 ### Custom User Model (`users/models.py`)
 
@@ -708,8 +716,11 @@ def get(self, request):
 | PUT | `/api/auth/user/` | Update profile | JWT |
 | POST | `/api/auth/password/reset/` | Request password reset | None |
 | POST | `/api/auth/password/reset/confirm/` | Confirm password reset | None |
-| GET | `/api/auth/social/google/` | Initiate Google OAuth | None |
-| GET | `/api/auth/social/github/` | Initiate GitHub OAuth | None |
+| GET | `/accounts/google/login/` | Start Google OAuth (allauth) | None |
+| GET | `/accounts/github/login/` | Start GitHub OAuth (allauth) | None |
+| GET | `/api/auth/oauth/complete/` | Session → JWT → frontend redirect | Session |
+| POST | `/api/auth/google/` | Social JWT exchange (access_token body) | None |
+| POST | `/api/auth/github/` | Social JWT exchange (access_token body) | None |
 
 ### Users (`/api/users/`)
 
@@ -718,15 +729,15 @@ def get(self, request):
 | GET | `/api/users/me/` | Current user profile | JWT | Authenticated |
 | GET | `/api/users/{id}/` | Public user profile | JWT | Authenticated |
 
-### Posts (`/api/posts/`) — *To Be Implemented*
+### Posts (`/api/posts/`)
 
 | Method | Endpoint | Description | Auth | Permissions |
 |--------|----------|-------------|------|-------------|
 | GET | `/api/posts/` | List published posts | Optional | Public |
-| POST | `/api/posts/` | Create post | JWT | Author/Admin |
+| POST | `/api/posts/` | Create draft/published post | JWT | Authenticated |
 | GET | `/api/posts/{slug}/` | Get post by slug | Optional | Public |
-| PUT/PATCH | `/api/posts/{slug}/` | Update post | JWT | Author/Admin |
-| DELETE | `/api/posts/{slug}/` | Delete post | JWT | Author/Admin |
+| GET | `/api/posts/{slug}/comments/` | List comments | Optional | Public |
+| POST | `/api/posts/{slug}/comments/` | Add comment | JWT | Authenticated |
 | POST | `/api/posts/{slug}/comments/` | Add comment | JWT | Authenticated |
 | GET | `/api/posts/{slug}/comments/` | List comments | Optional | Public |
 

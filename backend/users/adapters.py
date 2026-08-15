@@ -16,8 +16,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         user = super().populate_user(request, sociallogin, data)
         if not user.username and user.email:
             user.username = user.email.split("@")[0][:140]
-        if not getattr(user, "role", None):
-            user.role = "reader"
+        # Writing platform: OAuth users can publish immediately
+        if not getattr(user, "role", None) or user.role == "reader":
+            user.role = "author"
         return user
 
     def get_connect_redirect_url(self, request, socialaccount):

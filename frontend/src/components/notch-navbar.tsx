@@ -71,19 +71,18 @@ const MobileThemeToggle = () => {
 
 const LANDING_ITEMS = {
   left: [
-    { label: "Home", href: "#home", icon: Home },
-    { label: "About", href: "#about", icon: User },
-    { label: "Explore", href: "#explore", icon: Compass },
+    { label: "Home", href: "/#home", icon: Home },
+    { label: "About", href: "/#about", icon: User },
+    { label: "Explore", href: "/#explore", icon: Compass },
   ] as NavItem[],
   right: [
-    { label: "Community", href: "#community", icon: Users },
-    { label: "Pricing", href: "#pricing", icon: CreditCard },
+    { label: "Community", href: "/#community", icon: Users },
+    { label: "Pricing", href: "/#pricing", icon: CreditCard },
   ] as NavItem[],
 };
 
 const APP_ITEMS = {
   left: [
-    { label: "Home", href: "/", icon: Home },
     { label: "Explore", href: "/explore", icon: Compass },
     { label: "Write", href: "/create", icon: PenLine },
     { label: "Dashboard", href: "/dashboard", icon: User },
@@ -104,13 +103,23 @@ export function NotchNavbar({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     setLoggedIn(isLoggedIn());
+    setAuthReady(true);
     const onScroll = () => setScrolled(window.scrollY > 40);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    // Re-check after OAuth redirect / storage changes
+    const syncAuth = () => setLoggedIn(isLoggedIn());
+    window.addEventListener("storage", syncAuth);
+    window.addEventListener("focus", syncAuth);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("focus", syncAuth);
+    };
   }, []);
 
   const items = variant === "app" ? APP_ITEMS : LANDING_ITEMS;
@@ -126,7 +135,9 @@ export function NotchNavbar({
     ? "bg-zinc-50/90 dark:bg-black/90 backdrop-blur-sm"
     : "bg-zinc-50 dark:bg-black";
 
-  const authLinks = loggedIn ? (
+  const authLinks = !authReady ? (
+    <div className="h-9 w-16" aria-hidden />
+  ) : loggedIn ? (
     <button
       type="button"
       onClick={handleLogout}
@@ -265,7 +276,7 @@ export function NotchNavbar({
               ))}
               <div className="my-2 h-px bg-foreground/10" />
               <div className="flex flex-col gap-2">
-                {loggedIn ? (
+                {authReady && loggedIn ? (
                   <button
                     type="button"
                     className="flex items-center gap-3 rounded-lg p-3 text-left font-medium text-foreground/90 transition-colors hover:bg-foreground/5"
@@ -277,7 +288,7 @@ export function NotchNavbar({
                     <LogOut className="h-5 w-5 opacity-70" />
                     Logout
                   </button>
-                ) : (
+                ) : authReady ? (
                   <>
                     <Link
                       href="/login"
@@ -294,7 +305,7 @@ export function NotchNavbar({
                       Sign up
                     </Link>
                   </>
-                )}
+                ) : null}
               </div>
             </nav>
           </motion.div>

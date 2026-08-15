@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 import { NotchNavbar } from "@/components/notch-navbar";
 import { PunPostLogo } from "@/components/landing/PunPostLogo";
 
+const LANDING_NAV_PATHS = ["/login", "/register"];
+
 export default function Navbar() {
   const pathname = usePathname();
 
@@ -11,5 +13,13 @@ export default function Navbar() {
     return null;
   }
 
-  return <NotchNavbar variant="app" logo={<PunPostLogo />} />;
+  const useLandingNav =
+    LANDING_NAV_PATHS.includes(pathname) || pathname.startsWith("/auth/");
+
+  return (
+    <NotchNavbar
+      variant={useLandingNav ? "landing" : "app"}
+      logo={<PunPostLogo />}
+    />
+  );
 }

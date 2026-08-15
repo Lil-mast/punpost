@@ -18,20 +18,38 @@ class PostCreateSerializer(serializers.Serializer):
 
 
 class PostSerializer(serializers.Serializer):
-    """Read serializer – maps Convex document to clean API response."""
-    id = serializers.CharField(source="_id")
+    """Read serializer – maps Convex document (dict) to clean API response."""
+    id = serializers.CharField()
     title = serializers.CharField()
     slug = serializers.CharField()
     content = serializers.CharField()
     excerpt = serializers.CharField(required=False, allow_null=True)
-    cover_image = serializers.CharField(source="coverImage", required=False, allow_null=True)
-    author_id = serializers.CharField(source="authorId")
+    cover_image = serializers.CharField(required=False, allow_null=True)
+    author_id = serializers.CharField()
     status = serializers.CharField()
     tags = serializers.ListField(child=serializers.CharField())
-    published_at = serializers.IntegerField(source="publishedAt", required=False, allow_null=True)
-    created_at = serializers.IntegerField(source="createdAt")
-    updated_at = serializers.IntegerField(source="updatedAt")
-    view_count = serializers.IntegerField(source="viewCount")
+    published_at = serializers.IntegerField(required=False, allow_null=True)
+    created_at = serializers.IntegerField()
+    updated_at = serializers.IntegerField()
+    view_count = serializers.IntegerField()
+
+    def to_representation(self, instance):
+        data = instance if isinstance(instance, dict) else {}
+        return {
+            "id": data.get("_id") or data.get("id"),
+            "title": data.get("title"),
+            "slug": data.get("slug"),
+            "content": data.get("content"),
+            "excerpt": data.get("excerpt"),
+            "cover_image": data.get("coverImage") or data.get("cover_image"),
+            "author_id": data.get("authorId") or data.get("author_id"),
+            "status": data.get("status"),
+            "tags": data.get("tags") or [],
+            "published_at": data.get("publishedAt") or data.get("published_at"),
+            "created_at": data.get("createdAt") or data.get("created_at"),
+            "updated_at": data.get("updatedAt") or data.get("updated_at"),
+            "view_count": data.get("viewCount") or data.get("view_count") or 0,
+        }
 
 class CommentCreateSerializer(serializers.Serializer):
     content = serializers.CharField(min_length=1, max_length=2000)

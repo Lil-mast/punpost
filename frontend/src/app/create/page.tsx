@@ -47,7 +47,27 @@ export default function CreatePostPage() {
 
       router.push(`/posts/${res.data.slug}`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to create post");
+      const data = err.response?.data;
+      let detail =
+        data?.detail ||
+        (Array.isArray(data?.non_field_errors) ? data.non_field_errors[0] : null) ||
+        data?.title?.[0] ||
+        data?.content?.[0];
+
+      // Django DEBUG HTML pages aren't useful in the UI
+      if (typeof detail === "string" && detail.includes("<!DOCTYPE html>")) {
+        detail = "Server error while creating the post. Check the Django console.";
+      } else if (typeof data === "string" && data.includes("<!DOCTYPE html>")) {
+        detail = "Server error while creating the post. Check the Django console.";
+      }
+
+      if (err.response?.status === 401) {
+        setError("Your session expired. Please log in again.");
+      } else if (err.response?.status === 403) {
+        setError(detail || "You don’t have permission to create posts.");
+      } else {
+        setError(typeof detail === "string" ? detail : "Failed to create post");
+      }
     } finally {
       setLoading(false);
     }

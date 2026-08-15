@@ -16,8 +16,9 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
 )
 
-# Load .env from project root
+# Load .env from project root (preferred), then backend/.env as fallback
 environ.Env.read_env(os.path.join(ROOT_DIR, ".env"))
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production-please")
 DEBUG = env.bool("DEBUG", default=True)
@@ -153,7 +154,6 @@ SOCIALACCOUNT_PROVIDERS = {
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
