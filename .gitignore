@@ -1,4 +1,5 @@
 .env
+.env.local
 venv
 pycache/
 *pycache/
@@ -6,6 +7,10 @@ pycache/
 .venv
 node_modules/
 frontend/.next/
+frontend/.open-next/
+frontend/.wrangler/
 .claude\skills
 .agents\skills
 __pycache__/
+backend/staticfiles/
+*.sqlite3

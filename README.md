@@ -54,6 +54,7 @@ All docs use **Mermaid** diagrams for architecture and data flow.
 | [Architecture](docs/architecture.md) | System design, layers, data flows, tech stack |
 | [Technical Reference](docs/technical.md) | Settings, endpoints, auth, rate limiting, idempotency, testing |
 | [Frontend Guide](docs/frontend.md) | Next.js landing, app pages, OAuth UX, components |
+| [Deploy Guide](docs/deploy.md) | Cloudflare Workers + Render + Convex production |
 | [Educational Guide](docs/educational.md) | Concept explanations for learners |
 
 ## API Overview

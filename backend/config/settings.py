@@ -98,14 +98,22 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # -----------------------------------------------------------------------------
-# Database – Convex is primary. Django only needs SQLite for sessions/admin.
+# Database – Convex is primary. Django needs Postgres in production (sessions,
+# JWT blacklist, auth). SQLite remains the local default.
 # -----------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+if env("DATABASE_URL", default=""):
+    DATABASES = {"default": env.db("DATABASE_URL")}
+    # Render / managed Postgres typically require SSL
+    if DATABASES["default"].get("ENGINE", "").endswith("postgresql"):
+        DATABASES["default"].setdefault("OPTIONS", {})
+        DATABASES["default"]["OPTIONS"].setdefault("sslmode", "require")
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
 
 # -----------------------------------------------------------------------------
 # Auth
@@ -187,20 +195,20 @@ SIMPLE_JWT = {
 }
 
 # -----------------------------------------------------------------------------
-# Redis
+# Redis (optional — skip ping unless REDIS_URL is explicitly configured)
 # -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# Redis (optional in development)
-# -----------------------------------------------------------------------------
-REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
+REDIS_URL = env("REDIS_URL", default="")
+REDIS_AVAILABLE = False
 
-try:
-    import redis
-    r = redis.from_url(REDIS_URL)
-    r.ping()
-    REDIS_AVAILABLE = True
-except Exception:
-    REDIS_AVAILABLE = False
+if REDIS_URL:
+    try:
+        import redis
+
+        r = redis.from_url(REDIS_URL, socket_connect_timeout=1)
+        r.ping()
+        REDIS_AVAILABLE = True
+    except Exception:
+        REDIS_AVAILABLE = False
 
 if REDIS_AVAILABLE:
     CACHES = {
@@ -215,7 +223,6 @@ if REDIS_AVAILABLE:
     SESSION_ENGINE = "django.contrib.sessions.backends.cache"
     SESSION_CACHE_ALIAS = "default"
 else:
-    # Fallback for development when Redis is not running
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -234,25 +241,41 @@ CONVEX_DEPLOY_KEY = env("CONVEX_DEPLOY_KEY", default="")
 # CORS
 # -----------------------------------------------------------------------------
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
-CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,
+
+_cors_origins = {
+    FRONTEND_URL.rstrip("/"),
+    BACKEND_URL.rstrip("/"),
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-]
+}
+_extra_cors = env.list("CORS_ALLOWED_ORIGINS", default=[])
+_cors_origins.update(o.rstrip("/") for o in _extra_cors if o)
+
+CORS_ALLOWED_ORIGINS = sorted(_cors_origins)
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    FRONTEND_URL,
+_csrf_origins = {
+    FRONTEND_URL.rstrip("/"),
+    BACKEND_URL.rstrip("/"),
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-]
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+}
+CSRF_TRUSTED_ORIGINS = sorted(_csrf_origins)
+
+# Harden cookies / SSL when not in DEBUG
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
 
 # -----------------------------------------------------------------------------
 # Static / Media
 # -----------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
