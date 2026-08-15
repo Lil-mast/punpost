@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { api } from "@/lib/api";
+import { PageShell } from "@/components/page-shell";
+import { SectionLabel } from "@/components/landing/SectionLabel";
+import { fadeUp } from "@/components/landing/motion";
 
 interface Post {
   id: string;
@@ -17,7 +21,6 @@ interface Post {
 
 export default function ExplorePage() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -27,15 +30,12 @@ export default function ExplorePage() {
     else setLoading(true);
 
     try {
-      // For now we use a simple approach. 
-      // If your Convex returns { page, continueCursor, isDone }
       const res = await api.get("/posts/", {
         params: cursorValue ? { cursor: cursorValue } : {},
       });
 
       const data = res.data;
 
-      // Handle both plain array and paginated response
       if (Array.isArray(data)) {
         setPosts(data);
         setNextCursor(null);
@@ -56,90 +56,92 @@ export default function ExplorePage() {
     fetchPosts();
   }, []);
 
-  const loadMore = () => {
-    if (nextCursor) {
-      fetchPosts(nextCursor, true);
-    }
-  };
-
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-10"
+    <PageShell wide>
+      <motion.header
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp}
+        className="mb-14"
       >
-        <h1 className="text-3xl font-bold">Explore</h1>
-        <p className="mt-2 text-zinc-500">Discover the latest witty posts</p>
-      </motion.div>
+        <SectionLabel>02 / EXPLORE</SectionLabel>
+        <h1 className="mt-6 text-3xl font-bold tracking-tight md:text-5xl">
+          Discover witty posts
+        </h1>
+        <p className="mt-4 max-w-md text-foreground/50">
+          Sharp writing from the PunPost community — wordplay, punchlines, and clever takes.
+        </p>
+      </motion.header>
 
       {loading ? (
-        <div className="space-y-6">
+        <div className="divide-y divide-foreground/5">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-36 animate-pulse rounded-2xl bg-zinc-900/80"
-            />
+            <div key={i} className="h-24 animate-pulse bg-foreground/[0.03]" />
           ))}
         </div>
       ) : posts.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-800 py-20 text-center">
-          <p className="text-zinc-500">No published posts yet.</p>
+        <div className="border border-dashed border-foreground/10 py-20 text-center">
+          <p className="text-foreground/40">No published posts yet.</p>
           <Link
             href="/create"
-            className="mt-4 inline-block text-fuchsia-400 hover:underline"
+            className="mt-4 inline-block text-sm text-foreground/70 transition-colors hover:text-foreground"
           >
             Write the first one →
           </Link>
         </div>
       ) : (
         <>
-          <div className="space-y-5">
+          <div className="divide-y divide-foreground/5 border-t border-foreground/5">
             {posts.map((post, i) => (
-              <motion.article
+              <motion.div
                 key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="group rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 hover:border-zinc-700 hover:bg-zinc-900/70 transition"
+                initial="hidden"
+                animate="visible"
+                variants={fadeUp}
+                transition={{ delay: i * 0.04 }}
               >
-                <Link href={`/posts/${post.slug}`}>
-                  <h2 className="text-xl font-semibold group-hover:text-fuchsia-400 transition">
-                    {post.title}
-                  </h2>
-                </Link>
-
-                {post.excerpt && (
-                  <p className="mt-2 text-zinc-400 line-clamp-2 leading-relaxed">
-                    {post.excerpt}
-                  </p>
-                )}
-
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex flex-wrap gap-2">
-                    {post.tags?.slice(0, 4).map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs text-zinc-400"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                <Link
+                  href={`/posts/${post.slug}`}
+                  className="group flex flex-col gap-3 py-8 transition-colors hover:bg-foreground/[0.02] md:flex-row md:items-center md:gap-8 md:px-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-semibold tracking-tight transition-transform group-hover:translate-x-1 md:text-xl">
+                      {post.title}
+                    </h2>
+                    {post.excerpt && (
+                      <p className="mt-1 line-clamp-2 text-sm text-foreground/45">
+                        {post.excerpt}
+                      </p>
+                    )}
+                    {post.tags?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {post.tags.slice(0, 4).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[11px] uppercase tracking-wider text-foreground/35"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-xs text-zinc-600">
+                  <span className="shrink-0 text-xs text-foreground/35">
                     {post.view_count ?? 0} views
                   </span>
-                </div>
-              </motion.article>
+                  <ArrowUpRight className="h-5 w-5 shrink-0 text-foreground/25 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-foreground" />
+                </Link>
+              </motion.div>
             ))}
           </div>
 
           {nextCursor && (
-            <div className="mt-10 text-center">
+            <div className="mt-12 text-center">
               <button
-                onClick={loadMore}
+                type="button"
+                onClick={() => fetchPosts(nextCursor, true)}
                 disabled={loadingMore}
-                className="rounded-full border border-zinc-700 px-6 py-2.5 text-sm hover:border-zinc-500 transition disabled:opacity-50"
+                className="rounded-full border border-foreground/10 px-6 py-2.5 text-sm transition-colors hover:border-foreground/25 disabled:opacity-50"
               >
                 {loadingMore ? "Loading…" : "Load more"}
               </button>
@@ -147,6 +149,6 @@ export default function ExplorePage() {
           )}
         </>
       )}
-    </main>
+    </PageShell>
   );
 }

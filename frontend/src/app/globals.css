@@ -1,17 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: "Inter", system-ui, sans-serif;
+  --font-display: "Geist", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
+  --stripe-color: #fafaf9;
+  --background: #fafaf9;
+  --foreground: #0a0a0a;
+  --muted-foreground: #71717a;
+}
+
+.dark {
+  --stripe-color: #000000;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --muted-foreground: #a1a1aa;
 }
 
 body {
   font-family: var(--font-body);
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-/* nicer scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -26,7 +41,90 @@ body {
   background: #3f3f46;
 }
 
-/* selection color */
 ::selection {
   background: rgba(217, 70, 239, 0.3);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Glass Dock */
+.glass-dock {
+  --tab-bar-home-scale: 0.7;
+  --tab-bar-home-opacity: 1;
+  --tab-bar-blog-scale: 0.7;
+  --tab-bar-blog-opacity: 1;
+  --tab-bar-marker-scale: 0.7;
+  --tab-bar-marker-opacity: 1;
+  --tab-bar-email-scale: 0.7;
+  --tab-bar-email-opacity: 1;
+  --tab-bar-linkedin-scale: 0.7;
+  --tab-bar-linkedin-opacity: 1;
+  --tab-bar-x-scale: 0.7;
+  --tab-bar-x-opacity: 1;
+  --tab-bar-github-scale: 0.7;
+  --tab-bar-github-opacity: 1;
+}
+
+.glass-dock button {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #737373;
+  transition: color 0.1s;
+}
+
+.dark .glass-dock button {
+  color: #a3a3a3;
+}
+
+.glass-dock button.active,
+.glass-dock button:hover {
+  color: #000;
+}
+
+.dark .glass-dock button.active,
+.dark .glass-dock button:hover {
+  color: #fff;
+}
+
+.glass-dock button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.glass-border {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.dark .glass-border {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-aurora-bg {
+    animation: none !important;
+  }
 }

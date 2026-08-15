@@ -120,8 +120,12 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_VERIFICATION = "optional"
-LOGIN_REDIRECT_URL = "/"
+ACCOUNT_ADAPTER = "users.adapters.AccountAdapter"
+SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
+LOGIN_REDIRECT_URL = "/api/auth/oauth/complete/"
 LOGOUT_REDIRECT_URL = "/"
+
+BACKEND_URL = env("BACKEND_URL", default="http://127.0.0.1:8000")
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
@@ -134,7 +138,7 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     },
     "github": {
-        "SCOPE": ["user:email"],
+        "SCOPE": ["user", "user:email"],
         "APP": {
             "client_id": env("GITHUB_CLIENT_ID", default=""),
             "secret": env("GITHUB_CLIENT_SECRET", default=""),
@@ -240,6 +244,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     FRONTEND_URL,
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 # -----------------------------------------------------------------------------
@@ -268,38 +273,16 @@ REST_AUTH = {
     "REGISTER_SERIALIZER": "users.serializers.CustomRegisterSerializer",
     "USER_DETAILS_SERIALIZER": "users.serializers.UserSerializer",
     "USE_JWT": True,
-    "JWT_AUTH_HTTPONLY": False,          # so frontend can read the tokens
-    "SESSION_LOGIN": False,              # we prefer JWT for API
-}
-
-
-SOCIALACCOUNT_PROVIDERS = {
-    "google": {
-        "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
-        "APP": {
-            "client_id": env("GOOGLE_CLIENT_ID", default=""),
-            "secret": env("GOOGLE_CLIENT_SECRET", default=""),
-            "key": "",
-        },
-    },
-    "github": {
-        "SCOPE": ["user", "user:email"],
-        "APP": {
-            "client_id": env("GITHUB_CLIENT_ID", default=""),
-            "secret": env("GITHUB_CLIENT_SECRET", default=""),
-            "key": "",
-        },
-    },
+    "JWT_AUTH_HTTPONLY": False,  # so frontend can read the tokens
+    "SESSION_LOGIN": False,  # we prefer JWT for API
+    "JWT_AUTH_RETURN_EXPIRATION": True,
 }
 
 # Important extra settings
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = "email"
 SOCIALACCOUNT_EMAIL_REQUIRED = True
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

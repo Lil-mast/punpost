@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { isLoggedIn } from "@/lib/auth";
+import { PageShell } from "@/components/page-shell";
+import { SectionLabel } from "@/components/landing/SectionLabel";
+import { fadeUp } from "@/components/landing/motion";
 
 interface Post {
   id: string;
@@ -63,55 +67,64 @@ export default function PostPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-20 text-center text-zinc-500">
-        Loading…
-      </main>
+      <PageShell>
+        <p className="text-foreground/40">Loading…</p>
+      </PageShell>
     );
   }
 
   if (!post) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-20 text-center text-zinc-500">
-        Post not found
-      </main>
+      <PageShell>
+        <SectionLabel>POST</SectionLabel>
+        <h1 className="mt-6 text-3xl font-bold tracking-tight">Post not found</h1>
+        <Link
+          href="/explore"
+          className="mt-6 inline-block text-sm text-foreground/50 transition-colors hover:text-foreground"
+        >
+          ← Back to explore
+        </Link>
+      </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <motion.article
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="text-4xl font-bold leading-tight">{post.title}</h1>
+    <PageShell>
+      <motion.article initial="hidden" animate="visible" variants={fadeUp}>
+        <SectionLabel>POST</SectionLabel>
+        <h1 className="mt-6 text-3xl font-bold leading-[1.1] tracking-tight md:text-5xl">
+          {post.title}
+        </h1>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {post.tags?.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-zinc-800 px-3 py-0.5 text-xs text-zinc-400"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {post.tags?.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-3">
+            {post.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[11px] uppercase tracking-wider text-foreground/35"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
-        <div className="mt-10 prose prose-invert max-w-none whitespace-pre-wrap text-zinc-300 leading-relaxed">
+        <div className="mt-12 whitespace-pre-wrap text-base leading-relaxed text-foreground/70 md:text-lg">
           {post.content}
         </div>
       </motion.article>
 
-      {/* Comments */}
-      <section className="mt-16 border-t border-zinc-800 pt-10">
-        <h2 className="text-xl font-semibold mb-6">
-          Comments ({comments.length})
-        </h2>
+      <section className="mt-20 border-t border-foreground/5 pt-12">
+        <SectionLabel>{`COMMENTS · ${comments.length}`}</SectionLabel>
 
-        <div className="space-y-6 mb-10">
+        <div className="mt-8 divide-y divide-foreground/5">
+          {comments.length === 0 && (
+            <p className="py-6 text-sm text-foreground/35">No comments yet.</p>
+          )}
           {comments.map((c) => (
-            <div key={c.id} className="rounded-xl bg-zinc-900/60 p-4">
-              <p className="text-zinc-300">{c.content}</p>
-              <p className="mt-2 text-xs text-zinc-500">
+            <div key={c.id} className="py-6">
+              <p className="text-foreground/75">{c.content}</p>
+              <p className="mt-2 text-xs text-foreground/30">
                 {new Date(c.created_at).toLocaleString()}
               </p>
             </div>
@@ -119,30 +132,30 @@ export default function PostPage() {
         </div>
 
         {isLoggedIn() ? (
-          <form onSubmit={handleSubmitComment} className="space-y-4">
+          <form onSubmit={handleSubmitComment} className="mt-10 space-y-4">
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Write a comment…"
               rows={3}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm focus:border-fuchsia-500 focus:outline-none"
+              className="w-full border border-foreground/10 bg-transparent px-4 py-3 text-sm outline-none transition-colors placeholder:text-foreground/30 focus:border-foreground/30"
             />
             <button
               type="submit"
-              className="rounded-full bg-fuchsia-600 px-6 py-2 text-sm font-medium hover:bg-fuchsia-500 transition"
+              className="rounded-full bg-foreground px-6 py-2 text-sm font-medium text-background transition-transform hover:-translate-y-0.5"
             >
               Post comment
             </button>
           </form>
         ) : (
-          <p className="text-zinc-500 text-sm">
-            <a href="/login" className="text-fuchsia-400 hover:underline">
+          <p className="mt-8 text-sm text-foreground/40">
+            <Link href="/login" className="text-foreground/70 transition-colors hover:text-foreground">
               Log in
-            </a>{" "}
+            </Link>{" "}
             to leave a comment.
           </p>
         )}
       </section>
-    </main>
+    </PageShell>
   );
 }
